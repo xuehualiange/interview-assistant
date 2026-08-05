@@ -1,0 +1,24 @@
+# 环境变量（含 API Key，切勿提交）
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 数据库与运行时数据
+app.db
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 本地推送脚本（可选保留本地）
+push.ps1
