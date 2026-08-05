@@ -157,10 +157,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# 允许本地 HTML 前端（file:// 或独立静态页）跨域访问 API
+# 跨域：本地前端 + Vercel 部署域名（credentials 模式下不可使用 allow_origins=["*"]）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5500",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
