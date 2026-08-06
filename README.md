@@ -1,5 +1,9 @@
 # Interview Assistant · 多 Agent 协作求职助手
 
+<p align="center">
+  <img src="./docs/demo.gif" alt="AI求职助手演示" width="800"/>
+</p>
+
 > **从架构设计到工程落地的完整闭环** — 先写 SKILL 设计文档，再实现可运行的 FastAPI 后端、SSE 前端与 Docker 部署。
 
 [![GitHub](https://img.shields.io/badge/GitHub-interview--assistant-181717?logo=github)](https://github.com/xuehualiange/interview-assistant)
