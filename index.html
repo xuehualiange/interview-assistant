@@ -641,7 +641,7 @@
     <!-- 主区域 -->
     <main class="main">
       <div class="offline-banner" id="offlineBanner">
-        ⚠️ 无法连接后端服务（http://localhost:8000）。请确认 FastAPI 已启动：<code>uvicorn app.main:app --reload</code>
+        ⚠️ 无法连接后端服务（<span id="offlineApiBase"></span>）。请确认 FastAPI 已启动：<code>uvicorn app.main:app --reload</code>
       </div>
 
       <!-- Agent 状态栏 -->
@@ -693,7 +693,9 @@
     /* ============================================================
      * 配置
      * ============================================================ */
-    const API_BASE = 'http://localhost:8000';
+    const API_BASE = window.location.hostname === 'localhost'
+      ? 'http://localhost:8000'
+      : 'https://interview-assistant-production-044e.up.railway.app';
     const STORAGE_KEY = 'ai_job_assistant_sessions';
 
     const AGENT_META = {
@@ -1138,7 +1140,7 @@
         }
       } catch (err) {
         console.error(err);
-        const errMsg = '⚠️ 请求失败：' + (err.message || '未知错误') + '\n\n请确认后端服务已在 http://localhost:8000 运行。';
+        const errMsg = '⚠️ 请求失败：' + (err.message || '未知错误') + '\n\n请确认后端服务已在 ' + API_BASE + ' 运行。';
         if (bubble) {
           finalizeStreamingBubble(bubble, errMsg);
         } else {
@@ -1242,6 +1244,7 @@
     /* ============================================================
      * 初始化
      * ============================================================ */
+    $('#offlineApiBase').textContent = API_BASE;
     loadSessions();
     renderSessionList();
     if (state.currentId) loadHistory(state.currentId);
