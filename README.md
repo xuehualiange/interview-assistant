@@ -4,6 +4,11 @@
   <img src="./docs/demo.gif" alt="AI求职助手演示" width="800"/>
 </p>
 
+<p align="center">
+  <a href="https://xuehualiange.github.io/interview-assistant/">🌐 在线体验</a> •
+  <a href="#快速开始">⚡ 本地运行</a>
+</p>
+
 > **从架构设计到工程落地的完整闭环** — 先写 SKILL 设计文档，再实现可运行的 FastAPI 后端、SSE 前端与 Docker 部署。
 
 [![GitHub](https://img.shields.io/badge/GitHub-interview--assistant-181717?logo=github)](https://github.com/xuehualiange/interview-assistant)
@@ -26,12 +31,6 @@ AI 驱动的求职全链路助手，采用 **Triage + Specialist Handoff** 多 A
 | **工程层** | `app/` + [`index.html`](./index.html) + Docker | 可运行的 FastAPI 后端 + SSE 可视化前端 |
 
 用户输入自然语言 → **Triage Agent** 识别意图 → 路由至专家 Agent → **SSE 流式**返回 → **SQLite** 持久化。
-
-### 演示视频
-
-> 🎬 **Demo Video**（待补充）
->
-> [点击查看演示视频](#) ← 建议展示：意图路由 → Agent 切换 → SSE 流式输出 → 会话历史
 
 ### 为什么这个项目？
 
