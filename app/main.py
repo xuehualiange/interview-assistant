@@ -16,6 +16,12 @@ FastAPI 应用入口：健康检查 + 对话 SSE + 历史/会话管理。
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+if __package__ is None:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -253,3 +259,12 @@ async def clear_session(
         deleted_count=deleted,
         message=f"已清除 {deleted} 条消息",
     )
+
+
+if __name__ == "__main__":
+    import os
+
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
