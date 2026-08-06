@@ -170,6 +170,8 @@ app.add_middleware(
         "http://localhost:5500",
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://interview-assistant-drab.vercel.app",
+        "https://xuehualiange.github.io",
     ],
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
