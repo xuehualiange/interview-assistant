@@ -12,7 +12,7 @@
 from datetime import datetime, timezone
 from typing import Generator
 
-from sqlalchemy import DateTime, String, Text, create_engine
+from sqlalchemy import DateTime, String, Text, create_engine, delete, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config import get_settings
@@ -74,6 +74,23 @@ class Message(Base):
             f"role={self.role!r} agent_type={self.agent_type!r}>"
         )
 
+class Resume(Base):
+    """会话简历表：每个 session 可绑定一份简历文本。"""
+
+    __tablename__ = "resumes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    resume_text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<Resume id={self.id} session_id={self.session_id!r}>"
+
 
 # ---------- 数据库初始化 ----------
 
@@ -99,3 +116,20 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def save_resume(db: Session, session_id: str, resume_text: str) -> None:
+    """保存或更新简历（每个 session 只保留最新一份）"""
+    db.execute(delete(Resume).where(Resume.session_id == session_id))
+    db.add(Resume(session_id=session_id, resume_text=resume_text))
+    db.commit()
+
+
+def get_resume(db: Session, session_id: str) -> str | None:
+    """获取该 session 的最新简历文本"""
+    resume = db.scalars(
+        select(Resume)
+        .where(Resume.session_id == session_id)
+        .order_by(Resume.created_at.desc())
+    ).first()
+    return resume.resume_text if resume else None

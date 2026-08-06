@@ -90,9 +90,19 @@ def _build_messages(
     system_prompt: str,
     user_input: str,
     history: Sequence[ChatTurn],
+    resume_text: str | None = None,
 ) -> list[BaseMessage]:
     """将 system prompt + 历史 + 当前用户输入组装为 LangChain 消息列表。"""
     messages: list[BaseMessage] = [SystemMessage(content=system_prompt)]
+    if resume_text:
+        messages.append(
+            SystemMessage(
+                content=(
+                    f"【用户简历】\n{resume_text}\n\n"
+                    "请基于以上简历内容回答用户问题。"
+                )
+            )
+        )
     for role, content in history:
         if role == "user":
             messages.append(HumanMessage(content=content))
@@ -114,6 +124,7 @@ class SpecialistProtocol(Protocol):
         self,
         user_input: str,
         history: Sequence[ChatTurn] | None = None,
+        resume_text: str | None = None,
     ) -> AsyncIterator[str]: ...
 
 
@@ -144,6 +155,7 @@ class BaseSpecialist:
         self,
         user_input: str,
         history: Sequence[ChatTurn] | None = None,
+        resume_text: str | None = None,
     ) -> AsyncIterator[str]:
         """
         流式生成 Specialist 回答，逐 chunk yield 文本片段。
@@ -156,6 +168,7 @@ class BaseSpecialist:
             self.system_prompt,
             user_input.strip(),
             history or [],
+            resume_text=resume_text,
         )
         async for chunk in self._llm.astream(messages):
             # ChatDeepSeek chunk 可能是 str 或带 .content 的消息块

@@ -150,6 +150,7 @@ class AgentOrchestrator:
         db: Session,
         session_id: str,
         user_input: str,
+        resume_text: str | None = None,
     ) -> AsyncIterator[str | RouteDecision]:
         """
         处理单条用户消息，yield 路由决策（首包）与后续文本 chunk。
@@ -172,9 +173,17 @@ class AgentOrchestrator:
             return
 
         # ----- Triage 意图识别（保护 #3 在其后 resolve_route 中处理）-----
+        triage_input = user_input
+        if resume_text:
+            triage_input = (
+                f"【用户简历】\n{resume_text}\n\n"
+                f"请结合以上简历理解用户意图。\n\n"
+                f"【用户当前输入】\n{user_input}"
+            )
+
         triage: TriageResult | None = None
         try:
-            triage = await self._triage.classify_async(user_input)
+            triage = await self._triage.classify_async(triage_input)
         except Exception as exc:
             logger.warning("Triage 异常，将降级至默认 Agent: %s", exc)
 
@@ -190,7 +199,11 @@ class AgentOrchestrator:
         # ----- Specialist 流式输出 + 保护 #4 -----
         full_response: list[str] = []
         try:
-            async for chunk in specialist.stream_response(user_input, history):
+            async for chunk in specialist.stream_response(
+                user_input,
+                history,
+                resume_text=resume_text,
+            ):
                 full_response.append(chunk)
                 yield chunk
         except Exception as exc:

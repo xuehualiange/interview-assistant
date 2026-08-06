@@ -3,6 +3,7 @@ FastAPI 应用入口：健康检查 + 对话 SSE + 历史/会话管理。
 
 接口：
   POST   /chat                    SSE 流式对话
+  POST   /upload-resume             上传会话简历
   GET    /history/{session_id}    查询对话历史
   DELETE /session/{session_id}    清除会话
   GET    /health                  健康检查
@@ -35,7 +36,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import SessionLocal, get_db, init_db
+from app.database import SessionLocal, get_db, get_resume, init_db, save_resume
 from app.orchestrator import (
     AgentOrchestrator,
     delete_session,
@@ -84,6 +85,13 @@ class DeleteSessionResponse(BaseModel):
     message: str
 
 
+class UploadResumeRequest(BaseModel):
+    """POST /upload-resume 请求体。"""
+
+    session_id: str = Field(..., min_length=1, max_length=64)
+    content: str = Field(..., min_length=1, description="前端读取的文件文本内容")
+
+
 # ---------- SSE 工具 ----------
 
 
@@ -116,6 +124,7 @@ async def _chat_sse_generator(
     session_id: str,
     message: str,
     orchestrator: AgentOrchestrator,
+    resume_text: str | None = None,
 ) -> Any:
     """
     SSE 异步生成器。
@@ -127,7 +136,12 @@ async def _chat_sse_generator(
     """
     db = SessionLocal()
     try:
-        async for item in orchestrator.handle_message(db, session_id, message):
+        async for item in orchestrator.handle_message(
+            db,
+            session_id,
+            message,
+            resume_text=resume_text,
+        ):
             if isinstance(item, RouteDecision):
                 # 首包：Triage 路由结果
                 yield _format_sse_event("triage", _route_decision_to_content(item))
@@ -196,6 +210,7 @@ async def health_check() -> dict[str, Any]:
 @app.post("/chat", tags=["对话"])
 async def chat_stream(
     body: ChatRequest,
+    db: Session = Depends(get_db),
     orchestrator: AgentOrchestrator = Depends(get_orchestrator),
 ) -> StreamingResponse:
     """
@@ -210,8 +225,9 @@ async def chat_stream(
 
     对话 user/assistant 消息由 Orchestrator 自动持久化到 SQLite。
     """
+    resume_text = get_resume(db, body.session_id)
     return StreamingResponse(
-        _chat_sse_generator(body.session_id, body.message, orchestrator),
+        _chat_sse_generator(body.session_id, body.message, orchestrator, resume_text),
         media_type="text/event-stream",
         headers={
             # 禁止缓冲，确保 nginx / 代理立即转发每个 chunk
@@ -220,6 +236,16 @@ async def chat_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post("/upload-resume", tags=["对话"])
+async def upload_resume(
+    body: UploadResumeRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """上传或更新当前 session 的简历文本（TXT 内容）。"""
+    save_resume(db, body.session_id, body.content)
+    return {"status": "ok", "message": "简历已上传"}
 
 
 @app.get("/history/{session_id}", response_model=HistoryResponse, tags=["对话"])
