@@ -23,13 +23,15 @@ from pathlib import Path
 if __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import io
 import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
+import PyPDF2
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -83,13 +85,6 @@ class DeleteSessionResponse(BaseModel):
     session_id: str
     deleted_count: int
     message: str
-
-
-class UploadResumeRequest(BaseModel):
-    """POST /upload-resume 请求体。"""
-
-    session_id: str = Field(..., min_length=1, max_length=64)
-    content: str = Field(..., min_length=1, description="前端读取的文件文本内容")
 
 
 # ---------- SSE 工具 ----------
@@ -240,12 +235,24 @@ async def chat_stream(
 
 @app.post("/upload-resume", tags=["对话"])
 async def upload_resume(
-    body: UploadResumeRequest,
+    session_id: str = Form(...),
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    """上传或更新当前 session 的简历文本（TXT 内容）。"""
-    save_resume(db, body.session_id, body.content)
-    return {"status": "ok", "message": "简历已上传"}
+    """上传简历文件（PDF / TXT / MD），提取文本后存入数据库。"""
+    content = await file.read()
+    filename = file.filename or ""
+
+    if filename.lower().endswith(".pdf"):
+        reader = PyPDF2.PdfReader(io.BytesIO(content))
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() or ""
+    else:
+        text = content.decode("utf-8")
+
+    save_resume(db, session_id, text)
+    return {"status": "ok", "message": f"已上传: {filename}"}
 
 
 @app.get("/history/{session_id}", response_model=HistoryResponse, tags=["对话"])

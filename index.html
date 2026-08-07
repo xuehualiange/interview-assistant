@@ -702,7 +702,7 @@
       <!-- 输入区 -->
       <footer class="input-area">
         <div class="input-wrapper" id="inputWrapper">
-          <input type="file" id="resumeInput" accept=".txt,.md" hidden>
+          <input type="file" id="resumeInput" accept=".pdf,.txt,.md" hidden>
           <button class="btn-resume" id="btnResume" type="button" title="上传简历">📎</button>
           <textarea
             id="userInput"
@@ -1211,17 +1211,16 @@
 
       if (!state.currentId) createSession(true);
 
-      appendMessage('system', `📎 正在上传简历: ${file.name}...`);
+      appendMessage('system', `📎 正在解析: ${file.name}...`);
 
       try {
-        const text = await file.text();
+        const formData = new FormData();
+        formData.append('session_id', state.currentId);
+        formData.append('file', file);
+
         const res = await fetch(`${API_BASE}/upload-resume`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: state.currentId,
-            content: text,
-          }),
+          body: formData,
         });
 
         if (!res.ok) {
@@ -1230,7 +1229,7 @@
 
         const data = await res.json();
         if (data.status === 'ok') {
-          appendMessage('system', `✅ 简历已上传: ${file.name}`);
+          appendMessage('system', `✅ ${data.message}`);
         } else {
           appendMessage('system', '❌ 上传失败');
         }
