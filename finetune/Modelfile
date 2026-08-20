@@ -1,10 +1,12 @@
-# triage-router：Qwen3-1.7B LoRA 合并后的 GGUF
-# 用法：将 F16 GGUF 放在本文件同目录，或修改 FROM 路径后执行
-#   ollama create --quantize q4_K_M triage-router -f finetune/Modelfile
+FROM E:\models\triage-router-v2-f16.gguf
 
-FROM ./triage-router-f16.gguf
-
-TEMPLATE """{{ .Prompt }}"""
+# 与微调 / eval_ollama.py / app.agent 一致的 ChatML 格式（raw 模式亦按此拼接）
+TEMPLATE """<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+"""
 
 PARAMETER temperature 0
 PARAMETER num_predict 32
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|im_start|>"

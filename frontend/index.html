@@ -727,8 +727,8 @@
     /* ============================================================
      * 配置
      * ============================================================ */
-    const API_BASE = window.location.hostname === 'localhost'
-      ? 'http://localhost:8000'
+    const API_BASE = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+      ? `http://${window.location.hostname}:8000`
       : 'https://interview-assistant-production-044e.up.railway.app';
     const STORAGE_KEY = 'ai_job_assistant_sessions';
 
