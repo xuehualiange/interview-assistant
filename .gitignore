@@ -7,9 +7,15 @@ __pycache__/
 .venv/
 venv/
 
+# 模型权重与合并产物（体积大，勿提交）
+*.gguf
+*.safetensors
+merged_model/
+finetune/triage_lora_v2/
+
 # 数据库与运行时数据
 app.db
-data/
+/data/
 
 # IDE
 .idea/
@@ -22,3 +28,10 @@ Thumbs.db
 
 # 本地推送脚本（可选保留本地）
 push.ps1
+
+# 本地评测/调试产物
+fallback_test.log
+finetune/eval_deepseek_out.txt
+github更新包*
+*_extracted.txt
+finetune/_extract_docx.py

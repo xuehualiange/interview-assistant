@@ -42,6 +42,20 @@ class Settings(BaseSettings):
         description="默认使用的模型名称",
     )
 
+    # ---------- Triage 路由后端 ----------
+    router_backend: Literal["api", "local"] = Field(
+        default="api",
+        description="Triage 意图识别后端：api=DeepSeek，local=本地 Ollama triage-router",
+    )
+    ollama_url: str = Field(
+        default="http://localhost:11434/api/generate",
+        description="Ollama /api/generate 地址（router_backend=local 时使用）",
+    )
+    ollama_model: str = Field(
+        default="triage-router",
+        description="Ollama 本地路由模型名",
+    )
+
     # ---------- 数据库配置 ----------
     database_url: str = Field(
         default="sqlite:///./app.db",

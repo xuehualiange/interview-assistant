@@ -155,3 +155,67 @@ FastAPI · LangChain · DeepSeek · SQLite · SSE · Docker
 ## License
 
 MIT License · Copyright (c) 2026 Wu Yu
+
+---
+
+## 本地微调意图路由（LoRA + Ollama）
+
+### 动机
+
+项目原意图路由依赖 DeepSeek API，存在三个痛点：
+
+- **在线依赖**：断网或 API 波动时路由不可用
+- **延迟**：p50 约 930ms，对话首 token 被拖慢
+- **成本与隐私**：每次请求计费，用户输入需出网
+
+因此用 LoRA 微调 Qwen3-1.7B-Base，把意图路由（Triage，四分类 JSON 输出）下沉到本机。
+
+### 效果对比（冻结真实测试集 100 条，同集对比）
+
+| 指标 | 本地微调模型（Q4_K_M） | DeepSeek API（四分类完整 prompt） |
+|------|------------------------|-----------------------------------|
+| 准确率 | **93%** | 88% |
+| p50 延迟 | **393ms** | 932ms |
+| p95 延迟 | **414ms** | 1248ms |
+| 单次成本（100 条） | **¥0** | ¥0.1067 |
+| 离线可用 | ✅ | ❌ |
+
+> 测试集为人工整理的真实用户输入，训练/测试严格隔离，测试集冻结不再改动。基线采用 DeepSeek 的最强形态（补齐第四类定义的完整 prompt），而非极简 prompt。
+
+### 技术要点
+
+- **微调**：Qwen3-1.7B-Base + LoRA，仅 0.5% 参数可训练；AutoDL 单卡训练
+- **数据**：合成数据 + 真实样本，错例分桶后定向补数，两轮迭代（84% → 95%，bf16 测试口径）
+- **量化部署**：合并 LoRA 权重 → llama.cpp 转 GGUF（F16）→ `ollama create --quantize q4_K_M`，模型体积 3.4GB → 1.1GB，6GB 显存本机可跑；量化代价约 -2pp（95% → 93%）
+- **输出契约**：ChatML 模板，模型直接输出 `{"intent": "..."}`；调用方对首个 `{...}` 做正则提取，温度 0、num_predict 32
+- **双后端热切换**：`ROUTER_BACKEND=local|api` 环境变量切换；本地链路为 Ollama → DeepSeek → 关键词兜底三级降级，本地服务宕机自动回退 API，已做故障注入验证
+
+### 快速开始
+
+```bash
+# 1. 安装并启动 Ollama，创建模型（仓库内提供 Modelfile，GGUF 需自行转换）
+ollama create --quantize q4_K_M triage-router -f finetune/Modelfile
+
+# 2. 切换到本地路由（.env）
+ROUTER_BACKEND=local
+OLLAMA_URL=http://localhost:11434/api/generate
+OLLAMA_MODEL=triage-router
+
+# 3. 正常启动项目即可，路由自动走本地模型
+```
+
+### 复现评测
+
+```bash
+python finetune/eval_ollama.py     # 本地模型评测（需 Ollama 已启动）
+python finetune/eval_deepseek.py   # DeepSeek 基线评测（需 DEEPSEEK_API_KEY）
+```
+
+评测使用同一份冻结测试集 `finetune/data/test.jsonl`，prompt 与线上生产一致。
+
+### 已知局限
+
+- 小模型对输入格式敏感：必须带训练时的 INSTR 指令前缀，裸用户文本会 OOD 输出乱码（生产路由恒前置 INSTR，不受影响）
+- `out_of_scope` 错例集中在「真实文本碎片」边界样本，已记录于 `finetune/dataset_card.md`
+- Q4_K_M 量化后输出偶发垃圾 token（位于 JSON 前缀），因 JSON 提取鲁棒，不影响线上指标
+
